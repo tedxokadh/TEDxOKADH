@@ -129,7 +129,7 @@ const AGENDA_DAY2 = [
   { t:"9:30", tAr:"٩:٣٠", ampm:"PM", ar:{h:"لحظة الختام الكبرى",p:"كلمة الإغلاق، تسليم التقدير للمتحدثين، والكشف عن موعد الموسم القادم."}, en:{h:"Grand Finale",p:"Closing remarks, speaker appreciation ceremony, and announcement of next season."}, tag:"close", tagKind:"mute" },
 ]
 
-const SPONSOR_IMGS = ["/d.png","/F1C.png","/ge_project.png","/Resize_image_project.png","/t.png","/ject.png","/Remove_background_project.png","/Resize_ima_project.png"]
+const SPONSOR_IMGS = ["/d.png","/F1C.png","/ge_project.png","/Resize_image_project.png","/t.png","/ject.png","/Remove_background_project.png","/Resize_ima_project.png","/Resize_imect.png","/Resize_image_projct.png"]
 const MOMENT_IMGS = ["/moments_img1.JPG","/moments_img2.JPG","/moments_img3.jpg","/moments_img4.png","/moments_img5.JPG"]
 
 // =============================================
@@ -243,12 +243,15 @@ function Nav({ lang, setLang, navigate }) {
   return (
     <>
       <nav style={{position:'fixed',top:0,left:0,right:0,zIndex:100,background:scrolled?'rgba(5,5,5,0.92)':'transparent',backdropFilter:scrolled?'blur(20px)':'none',borderBottom:scrolled?'1px solid rgba(255,255,255,0.07)':'none',transition:'all 0.3s ease',padding:'0 clamp(12px,3vw,32px)',height:64,display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
-        <button onClick={()=>navigate('/')} style={{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:6,padding:0,flexShrink:0}}>
+        <button onClick={()=>navigate('/')} style={{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:8,padding:0,flexShrink:0}}>
           <img src="/logo-transparent.png" alt="" style={{height:38,objectFit:'contain',flexShrink:0}} onError={e=>e.target.style.display='none'}/>
-          <span style={{fontSize:'clamp(14px,3vw,20px)',fontWeight:900,letterSpacing:1,fontFamily:"var(--font-display)",whiteSpace:'nowrap'}}>
-            <span style={{color:'#E62B1E'}}>TED</span><sup style={{color:'#E62B1E',fontSize:10}}>x</sup>
-            <span style={{color:'#fff'}}>{lang==='ar'?'عكاظ':'OKADH'}</span>
-          </span>
+          <div style={{display:'flex',alignItems:'center',gap:4}}>
+            <img src="/logo1.png" alt="logo" style={{height:36,objectFit:'contain',flexShrink:0}}/>
+            <span style={{fontSize:'clamp(14px,3vw,20px)',fontWeight:900,letterSpacing:1,fontFamily:"var(--font-display)",whiteSpace:'nowrap'}}>
+              <span style={{color:'#E62B1E'}}>TED</span><sup style={{color:'#E62B1E',fontSize:10}}>x</sup>
+              <span style={{color:'#fff'}}>{lang==='ar'?'عكاظ':'OKADH'}</span>
+            </span>
+          </div>
         </button>
         <div style={{display:'flex',gap:'clamp(8px,1.5vw,16px)',alignItems:'center',flexWrap:'nowrap',flexShrink:0}}>
           <div className="desktop-nav" style={{display:'flex',gap:16}}>
@@ -409,8 +412,8 @@ function SponsorsSlider({ lang }) {
           <ul className="splide__list">
             {SPONSOR_IMGS.map((src,i)=>(
               <li key={i} className="splide__slide">
-                <div style={{width:190,height:130,borderRadius:12,overflow:'hidden',border:'1px solid rgba(255,255,255,0.07)',background:'rgba(13,13,13,0.7)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  <img src={src} alt="" style={{maxWidth:'90%',maxHeight:'90%',objectFit:'contain'}} onError={e=>e.target.style.display='none'}/>
+                <div style={{width:190,height:130,borderRadius:12,overflow:src==='/Resize_image_projct.png'?'visible':'hidden',border:'1px solid rgba(255,255,255,0.07)',background:'rgba(13,13,13,0.7)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <img src={src} alt="" style={src==='/Resize_image_projct.png'?{width:'100%',height:'100%',objectFit:'contain',transform:'scale(1.4)',transformOrigin:'center'}:{maxWidth:'90%',maxHeight:'90%',objectFit:'contain'}} onError={e=>e.target.style.display='none'}/>
                 </div>
               </li>
             ))}
