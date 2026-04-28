@@ -270,12 +270,6 @@ function Nav({ lang, setLang, navigate }) {
           <button onClick={()=>scrollTo('register')} className="nav-cta-btn" style={{background:'#E62B1E',border:'none',borderRadius:10,color:'#fff',padding:'7px clamp(10px,2vw,18px)',fontSize:'clamp(11px,1.5vw,13px)',fontWeight:700,cursor:'pointer',fontFamily:"var(--font-sans)",whiteSpace:'nowrap',flexShrink:0}}>
             {I18N[lang].cta}
           </button>
-          <button onClick={()=>navigate('/vip')} className="nav-scanner-btn" style={{background:'rgba(201,162,74,0.12)',border:'1px solid rgba(201,162,74,0.3)',borderRadius:10,color:'#C9A24A',padding:'7px 12px',fontSize:12,fontWeight:700,cursor:'pointer',fontFamily:"var(--font-sans)",whiteSpace:'nowrap',flexShrink:0}}>
-            VIP
-          </button>
-          <button onClick={()=>navigate('/scanner')} className="nav-scanner-btn" style={{background:'transparent',border:'1px solid rgba(255,255,255,0.1)',borderRadius:10,color:'#666',padding:'7px 12px',fontSize:12,cursor:'pointer',fontFamily:"var(--font-sans)",whiteSpace:'nowrap',flexShrink:0}}>
-            {I18N[lang].foot.scanner}
-          </button>
           <button className="burger-btn" onClick={()=>setMenuOpen(o=>!o)} style={{display:'none',background:'rgba(255,255,255,0.06)',border:'1px solid rgba(255,255,255,0.1)',color:'#fff',cursor:'pointer',fontSize:18,padding:'6px 10px',borderRadius:8,flexShrink:0,lineHeight:1}}>☰</button>
         </div>
       </nav>
@@ -284,8 +278,6 @@ function Nav({ lang, setLang, navigate }) {
           {[{id:'about',l:L.about},{id:'speakers',l:L.speakers},{id:'agenda',l:L.agenda},{id:'register',l:L.register},{id:'contact',l:L.contact}].map(it=>(
             <button key={it.id} onClick={()=>scrollTo(it.id)} style={{background:'none',border:'none',color:'#ccc',fontSize:16,cursor:'pointer',fontFamily:"var(--font-sans)",padding:'12px 0',textAlign:'start',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>{it.l}</button>
           ))}
-          <button onClick={()=>{setMenuOpen(false);navigate('/scanner')}} style={{background:'none',border:'none',color:'#ccc',fontSize:16,cursor:'pointer',fontFamily:"var(--font-sans)",padding:'12px 0',textAlign:'start',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>{I18N[lang].foot.scanner}</button>
-          <button onClick={()=>{setMenuOpen(false);navigate('/vip')}} style={{background:'none',border:'none',color:'#C9A24A',fontSize:16,fontWeight:700,cursor:'pointer',fontFamily:"var(--font-sans)",padding:'12px 0',textAlign:'start',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>VIP</button>
           <button onClick={()=>{setMenuOpen(false);navigate('/register')}} style={{background:'#E62B1E',border:'none',borderRadius:10,color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:"var(--font-sans)",padding:'13px 0',marginTop:8,textAlign:'center'}}>{I18N[lang].cta}</button>
         </div>
       )}
