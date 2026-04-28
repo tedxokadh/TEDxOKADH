@@ -8,6 +8,7 @@ import ScannerPage from './pages/ScannerPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import RegistrationPage from './pages/RegistrationPage.jsx'
 import VIPRegistrationPage from './pages/VIPRegistrationPage.jsx'
+import ConfirmPage from './pages/ConfirmPage.jsx'
 
 // =============================================
 // DATA
@@ -693,6 +694,7 @@ function AppInner() {
               <Route path="/scanner" element={<ScannerPage lang={lang}/>}/>
               <Route path="/vip" element={<VIPRegistrationPage lang={lang}/>}/>
               <Route path="/dashboard" element={<DashboardPage/>}/>
+              <Route path="/confirm/:code" element={<ConfirmPage/>}/>
             </Routes>
           </div>
         </>
