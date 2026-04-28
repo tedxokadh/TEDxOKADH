@@ -1,0 +1,9 @@
+name = "tedxokadh-mailer"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+FROM_EMAIL = "TEDx OKADH <no-reply@mail.tedxokadh.co>"
+SITE_URL = "https://www.tedxokadh.co"
+ALLOWED_ORIGIN = "https://www.tedxokadh.co"
+workers_dev = true

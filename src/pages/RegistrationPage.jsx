@@ -120,6 +120,20 @@ export default function RegistrationPage({ lang }) {
         workshop2: false,
         createdAt: serverTimestamp(),
       }), 15000)
+
+      // إرسال إيميل التأكيد مع الباركود عبر Cloudflare Worker
+      fetch('https://tedxokadh-mailer.uutedxokadhndefinedndefined.workers.dev', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'confirmation',
+          name: form.name.trim(),
+          email: form.email.trim().toLowerCase(),
+          code,
+          qrBase64: url,
+        }),
+      }).catch(err => console.warn('Email send failed (non-blocking):', err))
+
       setDone(true)
     } catch(e) {
       console.error('Firestore error:', e)
