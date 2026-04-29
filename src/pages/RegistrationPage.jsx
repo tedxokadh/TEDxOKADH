@@ -128,19 +128,6 @@ export default function RegistrationPage({ lang }) {
         createdAt: serverTimestamp(),
       }), 20000)
 
-      // إرسال إيميل التأكيد — غير محظور (non-blocking)
-      fetch('https://tedxokadh-mailer.uutedxokadhndefinedndefined.workers.dev', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'confirmation',
-          name: form.name.trim(),
-          email: form.email.trim().toLowerCase(),
-          code,
-          qrBase64: qrDataUrl,
-        }),
-      }).catch(err => console.warn('Email send failed:', err))
-
       setDone(true)
     } catch(e) {
       console.error('Firestore error:', e)
