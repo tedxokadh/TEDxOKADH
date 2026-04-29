@@ -109,7 +109,7 @@ export default function RegistrationPage({ lang }) {
       try {
         qrDataUrl = await QRCode.toDataURL(
           `${form.name.trim()}|${form.email.trim()}|${code}`,
-          { width: 180, margin: 2, color: { dark: '#ffffff', light: '#0a0a0a' } }
+          { width: 220, margin: 2, color: { dark: '#000000', light: '#ffffff' } }
         )
         setQrUrl(qrDataUrl)
       } catch { /* QR اختياري */ }
@@ -133,6 +133,7 @@ export default function RegistrationPage({ lang }) {
         checkedIn: false,
         workshop1: false,
         workshop2: false,
+        workshop3: false,
         createdAt: serverTimestamp(),
       })
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { Html5Qrcode } from 'html5-qrcode'
 import { db } from '../firebase'
-import { collection, query, where, getDocs, doc, updateDoc, getCountFromServer } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore'
 
 const PASSWORD = 'tedx2026'
 
@@ -51,6 +52,7 @@ export default function ScannerPage({ lang = 'ar' }) {
   const [lookupLoading, setLookupLoading] = useState(false)
   const scannerRef = useRef(null)
   const inputRef = useRef(null)
+  const scanLockRef = useRef(false)
 
   // Load counts from Firestore on mount
   useEffect(() => {
@@ -82,18 +84,23 @@ export default function ScannerPage({ lang = 'ar' }) {
     setCamErr('')
     await stopCam()
     try {
-      const { Html5Qrcode } = await import('html5-qrcode')
       const el = document.getElementById('qr-reader')
       if (!el) { setCamErr(L.camInitErr); return }
-      const qr = new Html5Qrcode('qr-reader')
+      el.innerHTML = ''
+      const qr = new Html5Qrcode('qr-reader', { verbose: false })
       scannerRef.current = qr
-      const config = { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1.0 }
+      const config = { fps: 10, qrbox: { width: 250, height: 250 } }
+      const onSuccess = (text) => {
+        if (scanLockRef.current) return
+        scanLockRef.current = true
+        stopCam()
+        handleLookup(text.trim())
+        setTimeout(() => { scanLockRef.current = false }, 3000)
+      }
       try {
-        await qr.start({ facingMode: 'environment' }, config,
-          (text) => { stopCam(); handleLookup(text.trim()) }, () => {})
+        await qr.start({ facingMode: 'environment' }, config, onSuccess, () => {})
       } catch {
-        await qr.start({ facingMode: 'user' }, config,
-          (text) => { stopCam(); handleLookup(text.trim()) }, () => {})
+        await qr.start({ facingMode: 'user' }, config, onSuccess, () => {})
       }
       setCamActive(true)
     } catch (err) {
