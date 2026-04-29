@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
-import { db } from '../firebase'
+import { db, fns } from '../firebase'
 import { collection, addDoc, serverTimestamp, enableNetwork } from 'firebase/firestore'
+import { httpsCallable } from 'firebase/functions'
 
 const STEPS_AR = ['المعلومات الشخصية', 'الخلفية المهنية', 'الاهتمامات والتأكيد']
 const STEPS_EN = ['Personal Info', 'Professional Background', 'Interests & Confirmation']
@@ -139,6 +140,14 @@ export default function RegistrationPage({ lang }) {
 
       clearTimeout(timeoutId)
       setDone(true)
+
+      // إرسال إيميل التأكيد — غير إلزامي، لا يؤثر على التسجيل
+      httpsCallable(fns, 'sendConfirmationEmail')({
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        code,
+      }).catch(() => {})
+
     } catch(e) {
       clearTimeout(timeoutId)
       console.error('Registration error:', e)

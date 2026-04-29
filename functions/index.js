@@ -1,8 +1,8 @@
-const { onDocumentCreated } = require('firebase-functions/v2/firestore')
-const { onRequest } = require('firebase-functions/v2/https')
+const { onCall, onRequest } = require('firebase-functions/v2/https')
 const { onSchedule } = require('firebase-functions/v2/scheduler')
 const { defineSecret } = require('firebase-functions/params')
 const admin = require('firebase-admin')
+const { getFirestore } = require('firebase-admin/firestore')
 const { Resend } = require('resend')
 const QRCode = require('qrcode')
 const { confirmationEmail, reminderEmail } = require('./emailTemplates')
@@ -13,12 +13,13 @@ const RESEND_API_KEY = defineSecret('RESEND_API_KEY')
 const FROM_EMAIL = 'TEDx OKADH <no-reply@mail.tedxokadh.co>'
 const SITE_URL = 'https://www.tedxokadh.co'
 const BATCH_SIZE = 100
+const DB_NAME = 'default'
 
 // ─────────────────────────────────────────────
 // Shared: fetch all registrants and send reminder emails
 // ─────────────────────────────────────────────
 async function dispatchReminders(resend) {
-  const db = admin.firestore()
+  const db = getFirestore(admin.app(), DB_NAME)
   const allRecipients = []
   let lastDoc = null
 
@@ -69,16 +70,13 @@ async function dispatchReminders(resend) {
 }
 
 // ─────────────────────────────────────────────
-// 1. إيميل التأكيد — يُفعَّل تلقائياً عند كل تسجيل جديد في Firestore
+// 1. إيميل التأكيد — يُستدعى من العميل مباشرة بعد اكتمال التسجيل
 // ─────────────────────────────────────────────
-exports.sendConfirmationEmail = onDocumentCreated(
-  { document: 'registrations/{docId}', secrets: [RESEND_API_KEY] },
-  async (event) => {
-    const data = event.data?.data()
-    if (!data) return
-
-    const { name, email, code } = data
-    if (!email || !code) return
+exports.sendConfirmationEmail = onCall(
+  { secrets: [RESEND_API_KEY] },
+  async (request) => {
+    const { name, email, code } = request.data || {}
+    if (!name || !email || !code) return { success: false }
 
     const resend = new Resend(RESEND_API_KEY.value())
 
@@ -96,20 +94,20 @@ exports.sendConfirmationEmail = onDocumentCreated(
 
     if (result.error) {
       console.error(`Failed to send confirmation to ${email}:`, result.error)
-    } else {
-      console.log(`Confirmation sent to ${email} — ID: ${result.data?.id}`)
+      return { success: false }
     }
+
+    console.log(`Confirmation sent to ${email} — ID: ${result.data?.id}`)
+    return { success: true }
   }
 )
 
 // ─────────────────────────────────────────────
 // 2. إيميل التذكير — مجدول تلقائياً يوم 13 مايو 2026 الساعة 8 صباحاً (توقيت الرياض)
-//    يتحقق يومياً من أن الحدث بعد يومين بالضبط ثم يرسل التذكير
 // ─────────────────────────────────────────────
 exports.scheduledReminders = onSchedule(
   { schedule: '0 8 * * *', timeZone: 'Asia/Riyadh', secrets: [RESEND_API_KEY] },
   async () => {
-    // الحدث: 15 مايو 2026 — نرسل التذكير عندما يتبقى يومان بالضبط (13 مايو)
     const eventDate = new Date('2026-05-15T00:00:00+03:00')
     const now = new Date()
     const diffDays = Math.round((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
