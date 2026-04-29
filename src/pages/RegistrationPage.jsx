@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { db } from '../firebase'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, enableNetwork } from 'firebase/firestore'
 
 const STEPS_AR = ['المعلومات الشخصية', 'الخلفية المهنية', 'الاهتمامات والتأكيد']
 const STEPS_EN = ['Personal Info', 'Professional Background', 'Interests & Confirmation']
@@ -29,10 +29,6 @@ export default function RegistrationPage({ lang }) {
   const [passCode, setPassCode] = useState('')
   const [qrUrl, setQrUrl] = useState('')
 
-  const addDocWithTimeout = (promise, ms = 15000) => new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Firestore request timed out.')), ms)
-    promise.then(value => { clearTimeout(timer); resolve(value) }).catch(err => { clearTimeout(timer); reject(err) })
-  })
 
   const statusOptions = ar
     ? ['طالب', 'موظف', 'إعلامي', 'باحث عن عمل', 'ريادي أعمال', 'أخرى']
@@ -92,46 +88,63 @@ export default function RegistrationPage({ lang }) {
     if (!validateStep(2)) return
     setLoading(true)
     setSubmitError('')
+
     const ts = Date.now().toString(36).toUpperCase()
     const r1 = Math.random().toString(36).slice(2,8).toUpperCase()
     const r2 = Math.random().toString(36).slice(2,6).toUpperCase()
     const code = `TEDXOKADH-${ts}-${r1}-${r2}`
     setPassCode(code)
+
+    // timeout يظهر خطأ بعد 12 ثانية إذا لم يكتمل التسجيل
+    const timeoutId = setTimeout(() => {
+      setLoading(false)
+      setSubmitError(ar
+        ? 'استغرق الاتصال وقتاً طويلاً. تحقق من الإنترنت وأعد المحاولة.'
+        : 'Connection timed out. Please check your internet and try again.')
+    }, 12000)
+
     try {
-      // توليد QR داخل try-catch حتى لو فشل على بعض الأجهزة لا يوقف التسجيل
+      // QR — لا يوقف التسجيل إذا فشل
       let qrDataUrl = ''
       try {
-        qrDataUrl = await QRCode.toDataURL(`${form.name.trim()}|${form.email.trim()}|${code}`, {
-          width: 180, margin: 2, color: { dark: '#ffffff', light: '#0a0a0a' }
-        })
+        qrDataUrl = await QRCode.toDataURL(
+          `${form.name.trim()}|${form.email.trim()}|${code}`,
+          { width: 180, margin: 2, color: { dark: '#ffffff', light: '#0a0a0a' } }
+        )
         setQrUrl(qrDataUrl)
-      } catch(qrErr) {
-        console.warn('QR generation failed:', qrErr)
-      }
+      } catch { /* QR اختياري */ }
 
-      await addDocWithTimeout(addDoc(collection(db, 'registrations'), {
-        name: form.name.trim(),
-        email: form.email.trim().toLowerCase(),
-        phone: form.phone,
-        status: form.status,
-        statusOther: form.statusOther || '',
-        specialization: form.specialization || '',
-        sector: form.sector,
-        workplace: form.workplace.trim(),
-        interests: form.interests,
+      // ضمان الاتصال بالشبكة قبل الكتابة
+      await enableNetwork(db)
+
+      await addDoc(collection(db, 'registrations'), {
+        name:          form.name.trim(),
+        email:         form.email.trim().toLowerCase(),
+        phone:         form.phone,
+        status:        form.status,
+        statusOther:   form.statusOther || '',
+        specialization:form.specialization || '',
+        sector:        form.sector,
+        workplace:     form.workplace.trim(),
+        interests:     form.interests,
         notifications: form.notifications || '',
-        attendance: form.attendance,
+        attendance:    form.attendance,
         code,
         checkedIn: false,
         workshop1: false,
         workshop2: false,
         createdAt: serverTimestamp(),
-      }), 20000)
+      })
 
+      clearTimeout(timeoutId)
       setDone(true)
     } catch(e) {
-      console.error('Firestore error:', e)
-      setSubmitError(ar ? 'حدث خطأ أثناء حفظ التسجيل. يرجى المحاولة مرة أخرى.' : 'Unable to save registration. Please try again later.')
+      clearTimeout(timeoutId)
+      console.error('Registration error:', e)
+      const msg = e?.code === 'permission-denied'
+        ? (ar ? 'غير مصرح بالتسجيل. تواصل مع الإدارة.' : 'Registration not permitted. Contact the team.')
+        : (ar ? 'حدث خطأ أثناء حفظ التسجيل. يرجى المحاولة مرة أخرى.' : 'Unable to save registration. Please try again.')
+      setSubmitError(msg)
     } finally {
       setLoading(false)
     }
