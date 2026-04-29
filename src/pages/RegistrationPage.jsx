@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
-import { db, fns } from '../firebase'
+import { db } from '../firebase'
 import { collection, addDoc, serverTimestamp, enableNetwork } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
+
+const CONFIRM_EMAIL_URL = 'https://sendconfirmationemail-3x5om53ymq-uc.a.run.app'
 
 const STEPS_AR = ['المعلومات الشخصية', 'الخلفية المهنية', 'الاهتمامات والتأكيد']
 const STEPS_EN = ['Personal Info', 'Professional Background', 'Interests & Confirmation']
@@ -142,10 +143,10 @@ export default function RegistrationPage({ lang }) {
       setDone(true)
 
       // إرسال إيميل التأكيد — غير إلزامي، لا يؤثر على التسجيل
-      httpsCallable(fns, 'sendConfirmationEmail')({
-        name: form.name.trim(),
-        email: form.email.trim().toLowerCase(),
-        code,
+      fetch(CONFIRM_EMAIL_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim().toLowerCase(), code }),
       }).catch(() => {})
 
     } catch(e) {

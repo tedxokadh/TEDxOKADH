@@ -62,7 +62,7 @@ function footerRow() {
 </tr>`
 }
 
-function confirmationEmail({ name, code, qrBase64 }) {
+function confirmationEmail({ name, code }) {
   return `${docHead('Your TEDxOkadh Registration Confirmation')}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="em-bg" style="background:#080808;padding:40px 16px;">
 <tr><td align="center">
@@ -97,7 +97,7 @@ ${logoRow()}
             <tr>
               <td align="center" class="em-card" style="background:#0f0f0f;border:1px solid #1c1c1c;border-radius:12px;padding:28px;">
                 <div style="background:#ffffff;border-radius:8px;display:inline-block;padding:12px;line-height:0;">
-                  <img src="${qrBase64}" alt="QR Code" width="180" height="180" style="display:block;border-radius:4px;"/>
+                  <img src="cid:qrcode" alt="QR Code" width="180" height="180" style="display:block;border-radius:4px;"/>
                 </div>
                 <p style="margin:14px 0 0;color:#E62B1E;font-size:10px;font-weight:700;letter-spacing:3px;font-family:'Courier New',monospace;">${code}</p>
               </td>
@@ -192,3 +192,5 @@ ${footerRow()}
 }
 
 module.exports = { confirmationEmail, reminderEmail }
+
+

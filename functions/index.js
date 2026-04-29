@@ -1,4 +1,4 @@
-const { onCall, onRequest } = require('firebase-functions/v2/https')
+const { onRequest } = require('firebase-functions/v2/https')
 const { onSchedule } = require('firebase-functions/v2/scheduler')
 const { defineSecret } = require('firebase-functions/params')
 const admin = require('firebase-admin')
@@ -16,7 +16,7 @@ const BATCH_SIZE = 100
 const DB_NAME = 'default'
 
 // ─────────────────────────────────────────────
-// Shared: fetch all registrants and send reminder emails
+// Shared: send reminders to all registrants
 // ─────────────────────────────────────────────
 async function dispatchReminders(resend) {
   const db = getFirestore(admin.app(), DB_NAME)
@@ -28,83 +28,104 @@ async function dispatchReminders(resend) {
     if (lastDoc) q = q.startAfter(lastDoc)
     const snapshot = await q.get()
     if (snapshot.empty) break
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
     snapshot.docs.forEach(doc => {
       const { name, email, code } = doc.data()
-      if (email && code) allRecipients.push({ name, email, code })
+      if (email && code && emailRegex.test(email)) allRecipients.push({ name, email, code })
     })
     lastDoc = snapshot.docs[snapshot.docs.length - 1]
   } while (lastDoc)
 
-  if (allRecipients.length === 0) return { sent: 0, failed: 0, total: 0 }
+  // Deduplicate by email address
+  const seen = new Set()
+  const unique = allRecipients.filter(({ email }) => {
+    if (seen.has(email)) return false
+    seen.add(email)
+    return true
+  })
+
+  if (unique.length === 0) return { sent: 0, failed: 0, total: 0 }
 
   let totalSent = 0
   let totalFailed = 0
 
-  for (let i = 0; i < allRecipients.length; i += BATCH_SIZE) {
-    const batch = allRecipients.slice(i, i + BATCH_SIZE)
+  for (const { name, email, code } of unique) {
+    try {
+      const result = await resend.emails.send({
+        from: FROM_EMAIL,
+        to: email,
+        subject: 'TEDxOkadh — 2 Days Away',
+        html: reminderEmail({
+          name,
+          confirmLink: `${SITE_URL}/confirm/${encodeURIComponent(code)}`,
+        }),
+      })
 
-    const batchPayload = batch.map(({ name, email, code }) => ({
-      from: FROM_EMAIL,
-      to: email,
-      subject: 'TEDxOkadh — 2 Days Away',
-      html: reminderEmail({
-        name,
-        confirmLink: `${SITE_URL}/confirm/${encodeURIComponent(code)}`,
-      }),
-    }))
-
-    const result = await resend.batch.send(batchPayload)
-    if (result.error) {
-      console.error(`Batch ${Math.floor(i / BATCH_SIZE) + 1} failed:`, result.error)
-      totalFailed += batch.length
-    } else {
-      totalSent += batch.length
-      console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(allRecipients.length / BATCH_SIZE)} — sent: ${totalSent}`)
+      if (result.error) {
+        console.error(`Failed for ${email}:`, JSON.stringify(result.error))
+        totalFailed++
+      } else {
+        totalSent++
+        console.log(`Sent reminder to ${email} (${totalSent}/${unique.length})`)
+      }
+    } catch (e) {
+      console.error(`Exception for ${email}:`, e.message)
+      totalFailed++
     }
 
-    if (i + BATCH_SIZE < allRecipients.length)
-      await new Promise(r => setTimeout(r, 200))
+    // Resend rate limit: max 2 requests/second — wait 600ms to stay safe
+    await new Promise(r => setTimeout(r, 600))
   }
 
-  return { sent: totalSent, failed: totalFailed, total: allRecipients.length }
+  return { sent: totalSent, failed: totalFailed, total: unique.length }
 }
 
 // ─────────────────────────────────────────────
-// 1. إيميل التأكيد — يُستدعى من العميل مباشرة بعد اكتمال التسجيل
+// 1. إيميل التأكيد — HTTP endpoint مفتوح لجميع الأجهزة والمتصفحات
+//    POST /sendConfirmationEmail  body: { name, email, code }
 // ─────────────────────────────────────────────
-exports.sendConfirmationEmail = onCall(
-  { secrets: [RESEND_API_KEY], invoker: 'public', cors: true },
-  async (request) => {
-    const { name, email, code } = request.data || {}
-    if (!name || !email || !code) return { success: false }
+exports.sendConfirmationEmail = onRequest(
+  { secrets: [RESEND_API_KEY], cors: true, invoker: 'public' },
+  async (req, res) => {
+    if (req.method !== 'POST') return res.status(405).end()
+
+    const { name, email, code } = req.body || {}
+    if (!name || !email || !code) return res.status(400).json({ success: false })
 
     const resend = new Resend(RESEND_API_KEY.value())
 
-    // Black-on-white QR — always readable in both dark & light email mode
-    const qrDataUrl = await QRCode.toDataURL(
+    // Generate QR as raw PNG buffer — avoids base64 blocking in email clients
+    const qrBuffer = await QRCode.toBuffer(
       `${name}|${email}|${code}`,
-      { width: 220, margin: 2, color: { dark: '#000000', light: '#ffffff' } }
+      { width: 220, margin: 2 }
     )
 
     const result = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
       subject: 'Your TEDxOkadh Registration Confirmation',
-      html: confirmationEmail({ name, code, qrBase64: qrDataUrl }),
+      html: confirmationEmail({ name, code }),
+      attachments: [{
+        filename: 'qrcode.png',
+        content: qrBuffer,
+        contentId: 'qrcode',
+        contentDisposition: 'inline',
+        contentType: 'image/png',
+      }],
     })
 
     if (result.error) {
       console.error(`Failed to send confirmation to ${email}:`, result.error)
-      return { success: false }
+      return res.status(500).json({ success: false })
     }
 
     console.log(`Confirmation sent to ${email} — ID: ${result.data?.id}`)
-    return { success: true }
+    res.json({ success: true })
   }
 )
 
 // ─────────────────────────────────────────────
-// 2. إيميل التذكير — مجدول تلقائياً يوم 13 مايو 2026 الساعة 8 صباحاً (توقيت الرياض)
+// 2. إيميل التذكير — مجدول تلقائياً يوم 13 مايو 2026 الساعة 8 صباحاً
 // ─────────────────────────────────────────────
 exports.scheduledReminders = onSchedule(
   { schedule: '0 8 * * *', timeZone: 'Asia/Riyadh', secrets: [RESEND_API_KEY] },
@@ -126,11 +147,11 @@ exports.scheduledReminders = onSchedule(
 )
 
 // ─────────────────────────────────────────────
-// 3. إيميل التذكير — يُشغَّل يدوياً من الأدمن عند الحاجة
-//    POST https://<region>-tedxokadh2026.cloudfunctions.net/sendReminderEmails
+// 3. إيميل التذكير — يُشغَّل يدوياً من الأدمن
+//    POST https://sendreminderemails-3x5om53ymq-uc.a.run.app
 // ─────────────────────────────────────────────
 exports.sendReminderEmails = onRequest(
-  { secrets: [RESEND_API_KEY], timeoutSeconds: 540, invoker: 'public' },
+  { secrets: [RESEND_API_KEY], timeoutSeconds: 540, cors: true, invoker: 'public' },
   async (req, res) => {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed')
 
