@@ -73,16 +73,17 @@ async function dispatchReminders(resend) {
 // 1. إيميل التأكيد — يُستدعى من العميل مباشرة بعد اكتمال التسجيل
 // ─────────────────────────────────────────────
 exports.sendConfirmationEmail = onCall(
-  { secrets: [RESEND_API_KEY] },
+  { secrets: [RESEND_API_KEY], invoker: 'public', cors: true },
   async (request) => {
     const { name, email, code } = request.data || {}
     if (!name || !email || !code) return { success: false }
 
     const resend = new Resend(RESEND_API_KEY.value())
 
+    // Black-on-white QR — always readable in both dark & light email mode
     const qrDataUrl = await QRCode.toDataURL(
       `${name}|${email}|${code}`,
-      { width: 220, margin: 2, color: { dark: '#ffffff', light: '#0a0a0a' } }
+      { width: 220, margin: 2, color: { dark: '#000000', light: '#ffffff' } }
     )
 
     const result = await resend.emails.send({
@@ -129,7 +130,7 @@ exports.scheduledReminders = onSchedule(
 //    POST https://<region>-tedxokadh2026.cloudfunctions.net/sendReminderEmails
 // ─────────────────────────────────────────────
 exports.sendReminderEmails = onRequest(
-  { secrets: [RESEND_API_KEY], timeoutSeconds: 540 },
+  { secrets: [RESEND_API_KEY], timeoutSeconds: 540, invoker: 'public' },
   async (req, res) => {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed')
 
