@@ -97,11 +97,18 @@ export default function RegistrationPage({ lang }) {
     const r2 = Math.random().toString(36).slice(2,6).toUpperCase()
     const code = `TEDXOKADH-${ts}-${r1}-${r2}`
     setPassCode(code)
-    const url = await QRCode.toDataURL(`${form.name.trim()}|${form.email.trim()}|${code}`, {
-      width: 220, margin: 2, color: { dark: '#ffffff', light: '#0a0a0a' }
-    })
-    setQrUrl(url)
     try {
+      // توليد QR داخل try-catch حتى لو فشل على بعض الأجهزة لا يوقف التسجيل
+      let qrDataUrl = ''
+      try {
+        qrDataUrl = await QRCode.toDataURL(`${form.name.trim()}|${form.email.trim()}|${code}`, {
+          width: 180, margin: 2, color: { dark: '#ffffff', light: '#0a0a0a' }
+        })
+        setQrUrl(qrDataUrl)
+      } catch(qrErr) {
+        console.warn('QR generation failed:', qrErr)
+      }
+
       await addDocWithTimeout(addDoc(collection(db, 'registrations'), {
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
@@ -119,9 +126,9 @@ export default function RegistrationPage({ lang }) {
         workshop1: false,
         workshop2: false,
         createdAt: serverTimestamp(),
-      }), 15000)
+      }), 20000)
 
-      // إرسال إيميل التأكيد مع الباركود عبر Cloudflare Worker
+      // إرسال إيميل التأكيد — غير محظور (non-blocking)
       fetch('https://tedxokadh-mailer.uutedxokadhndefinedndefined.workers.dev', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -130,9 +137,9 @@ export default function RegistrationPage({ lang }) {
           name: form.name.trim(),
           email: form.email.trim().toLowerCase(),
           code,
-          qrBase64: url,
+          qrBase64: qrDataUrl,
         }),
-      }).catch(err => console.warn('Email send failed (non-blocking):', err))
+      }).catch(err => console.warn('Email send failed:', err))
 
       setDone(true)
     } catch(e) {
